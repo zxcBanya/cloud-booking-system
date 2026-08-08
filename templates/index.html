@@ -6,26 +6,44 @@
     <title>Sunway Room Booking</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; }
-        h1 { text-align: center; color: #333; }
+        .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .nav-links a { margin-left: 15px; text-decoration: none; padding: 8px 15px; border-radius: 5px; color: white; }
+        .btn-login { background: #3498db; }
+        .btn-register { background: #27ae60; }
+        .btn-logout { background: #e74c3c; }
+        h1 { text-align: center; color: #333; margin-top: 0; }
         .room-container { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-top: 30px; }
         .room-card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 300px; text-align: center; }
         .room-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #2c3e50; }
         .room-price { color: #27ae60; font-size: 22px; margin-bottom: 15px; font-weight: bold; }
         .btn { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; transition: 0.3s; }
         .btn:hover { background: #2980b9; }
-        .booked { background: #e74c3c; cursor: not-allowed; }
-        .booked:hover { background: #c0392b; }
+        .booked { background: #95a5a6; cursor: not-allowed; }
+        .booked:hover { background: #7f8c8d; }
     </style>
 </head>
 <body>
 
-    <h1>🏠 Sunway Area Room Booking</h1>
+    <!-- Dynamic Header -->
+    <div class="header">
+        <h2>🏠 Sunway Area Room Booking</h2>
+        <div class="nav-links">
+            {% if current_user.is_authenticated %}
+                <span style="margin-right: 15px; font-weight: bold;">Welcome, {{ current_user.username }}!</span>
+                <a href="/logout" class="btn-logout">Logout</a>
+            {% else %}
+                <a href="/login" class="btn-login">Login</a>
+                <a href="/register" class="btn-register">Register</a>
+            {% endif %}
+        </div>
+    </div>
+
     <div class="room-container" id="rooms">
         <!-- Rooms will be loaded here from the database -->
     </div>
 
     <script>
-        // Fetch and display rooms from the Python API
+        // Fetch and display rooms
         fetch('/rooms')
             .then(response => response.json())
             .then(rooms => {
@@ -48,16 +66,23 @@
                 });
             });
 
-        // Booking function: sends a POST request to update the database
+        // Booking function with Authentication Check
         function bookRoom(id) {
+            // Jinja block to check login status before sending request
+            {% if not current_user.is_authenticated %}
+                alert("Please login to book a room!");
+                window.location.href = "/login";
+                return;
+            {% endif %}
+
             fetch(`/book/${id}`, {
                 method: 'POST'
             })
             .then(response => response.json())
             .then(data => {
                 if(data.message) {
-                    alert(data.message); // Show success message
-                    location.reload();   // Reload the page to update the button status
+                    alert(data.message); 
+                    location.reload();   
                 } else {
                     alert(data.error);
                 }
