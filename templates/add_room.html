@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Add New Room - Admin</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .form-container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 350px; }
+        h2 { text-align: center; color: #333; }
+        input, button { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        button { background: #8e44ad; color: white; border: none; cursor: pointer; font-size: 16px; font-weight: bold; }
+        button:hover { background: #732d91; }
+        .back-link { display: block; text-align: center; margin-top: 10px; text-decoration: none; color: #3498db; }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h2>🏠 Add New Room</h2>
+        <!-- enctype="multipart/form-data" is crucial for uploading files -->
+        <form action="/add_room" method="POST" enctype="multipart/form-data">
+            <label for="title">Room Title (e.g., Master Bedroom):</label>
+            <input type="text" name="title" id="title" required>
+
+            <label for="price">Monthly Price (RM):</label>
+            <input type="number" step="0.01" name="price" id="price" required>
+
+            <label for="room_image">Upload Room Photo:</label>
+            <input type="file" name="room_image" id="room_image" accept="image/*" required>
+
+            <button type="submit">Upload and Save Room</button>
+        </form>
+        <a href="/" class="back-link">Back to Home</a>
+    </div>
+</body>
+</html>

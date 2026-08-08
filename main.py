@@ -2,6 +2,7 @@ from flask import Flask, jsonify, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename # NEW: For safe file saving
 import os
 import re
 
@@ -12,11 +13,18 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'booking.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# NEW: Configure image upload settings
+app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'static', 'uploads')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
 db = SQLAlchemy(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # --- DATABASE MODELS ---
 
@@ -31,7 +39,6 @@ class Room(db.Model):
     price = db.Column(db.Float, nullable=False)
     is_booked = db.Column(db.Boolean, default=False)
     image_url = db.Column(db.String(200), nullable=True)
-    # NEW: Link the room to the user who booked it
     booked_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
 
 with app.app_context():
@@ -94,6 +101,31 @@ def logout():
     logout_user()
     return redirect(url_for('home'))
 
+# NEW ROUTE: Admin page to upload rooms
+@app.route('/add_room', methods=['GET', 'POST'])
+@login_required
+def add_room():
+    if request.method == 'POST':
+        title = request.form.get('title')
+        price = request.form.get('price')
+        file = request.files.get('room_image')
+
+        # Check if file exists and is an image
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            # Save file to static/uploads folder
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            
+            # Save room data to database
+            new_room = Room(title=title, price=float(price), image_url=filename)
+            db.session.add(new_room)
+            db.session.commit()
+            
+            return redirect(url_for('home'))
+        return "Invalid file type or no file uploaded.", 400
+        
+    return render_template('add_room.html')
+
 # --- API ENDPOINTS ---
 
 @app.route('/rooms', methods=['GET'])
@@ -107,7 +139,6 @@ def get_rooms():
             "price": room.price,
             "is_booked": room.is_booked,
             "image_url": room.image_url,
-            # NEW: Tell the frontend if the logged-in user owns this booking
             "is_my_booking": True if current_user.is_authenticated and room.booked_by == current_user.id else False
         })
     return jsonify(rooms_list)
@@ -118,18 +149,16 @@ def book_room(room_id):
     room = Room.query.get(room_id)
     if room and not room.is_booked:
         room.is_booked = True
-        room.booked_by = current_user.id # Assign user ID to room
+        room.booked_by = current_user.id
         db.session.commit()
         return jsonify({"message": f"Success! {room.title} is now booked."}), 200
     return jsonify({"error": "Room not found or already booked."}), 400
 
-# NEW ROUTE: Cancel a booking
 @app.route('/unbook/<int:room_id>', methods=['POST'])
 @login_required
 def unbook_room(room_id):
     room = Room.query.get(room_id)
     if room and room.is_booked:
-        # Verify that the person cancelling is the person who booked it
         if room.booked_by == current_user.id:
             room.is_booked = False
             room.booked_by = None
