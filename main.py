@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
+import re
 
 app = Flask(__name__)
 # Secret key is required by Flask to secure user sessions
@@ -71,13 +72,22 @@ def register():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password') # Capture second password
         
-        # Check if username is already taken
+        # 1. Validate username format (Only A-Z, a-z, 0-9, and underscores)
+        if not re.match("^[a-zA-Z0-9_]+$", username):
+            return render_template('register.html', error="Username can only contain English letters, numbers, and underscores.")
+
+        # 2. Check if passwords match
+        if password != confirm_password:
+            return render_template('register.html', error="Passwords do not match!")
+        
+        # 3. Check if username is already taken
         user_exists = User.query.filter_by(username=username).first()
         if user_exists:
-            return render_template('register.html', error="Username already exists")
+            return render_template('register.html', error="Username already exists!")
             
-        # Hash the password for security
+        # 4. Hash the password and save user
         hashed_password = generate_password_hash(password)
         new_user = User(username=username, password_hash=hashed_password)
         db.session.add(new_user)
