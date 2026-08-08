@@ -21,11 +21,34 @@
 
     <h1>🏠 Sunway Area Room Booking</h1>
     <div class="room-container" id="rooms">
-        <!-- Комнаты будут загружаться сюда из базы данных -->
+        <!-- Rooms will be loaded here from the database -->
     </div>
 
     <script>
-        // Новая функция бронирования: отправляет POST-запрос в базу данных
+        // Fetch and display rooms from the Python API
+        fetch('/rooms')
+            .then(response => response.json())
+            .then(rooms => {
+                const container = document.getElementById('rooms');
+                rooms.forEach(room => {
+                    const card = document.createElement('div');
+                    card.className = 'room-card';
+                    
+                    let buttonHtml = `<button class="btn" onclick="bookRoom(${room.id})">Book Now</button>`;
+                    if (room.is_booked) {
+                        buttonHtml = `<button class="btn booked" disabled>Already Booked</button>`;
+                    }
+
+                    card.innerHTML = `
+                        <div class="room-title">${room.title}</div>
+                        <div class="room-price">RM ${room.price} / month</div>
+                        ${buttonHtml}
+                    `;
+                    container.appendChild(card);
+                });
+            });
+
+        // Booking function: sends a POST request to update the database
         function bookRoom(id) {
             fetch(`/book/${id}`, {
                 method: 'POST'
@@ -33,8 +56,8 @@
             .then(response => response.json())
             .then(data => {
                 if(data.message) {
-                    alert(data.message); // Показываем сообщение об успехе
-                    location.reload();   // Перезагружаем страницу, чтобы обновить кнопку
+                    alert(data.message); // Show success message
+                    location.reload();   // Reload the page to update the button status
                 } else {
                     alert(data.error);
                 }
