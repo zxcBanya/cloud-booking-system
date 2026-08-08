@@ -25,32 +25,21 @@
     </div>
 
     <script>
-        // Запрашиваем данные из нашего Python API
-        fetch('/rooms')
-            .then(response => response.json())
-            .then(rooms => {
-                const container = document.getElementById('rooms');
-                rooms.forEach(room => {
-                    const card = document.createElement('div');
-                    card.className = 'room-card';
-                    
-                    let buttonHtml = `<button class="btn" onclick="bookRoom(${room.id})">Book Now</button>`;
-                    if (room.is_booked) {
-                        buttonHtml = `<button class="btn booked" disabled>Already Booked</button>`;
-                    }
-
-                    card.innerHTML = `
-                        <div class="room-title">${room.title}</div>
-                        <div class="room-price">RM ${room.price} / month</div>
-                        ${buttonHtml}
-                    `;
-                    container.appendChild(card);
-                });
-            });
-
-        // Функция бронирования (логику добавим на следующем шаге)
+        // Новая функция бронирования: отправляет POST-запрос в базу данных
         function bookRoom(id) {
-            alert("This button works! We will add the database update logic next. Room ID: " + id);
+            fetch(`/book/${id}`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.message) {
+                    alert(data.message); // Показываем сообщение об успехе
+                    location.reload();   // Перезагружаем страницу, чтобы обновить кнопку
+                } else {
+                    alert(data.error);
+                }
+            })
+            .catch(error => console.error('Error:', error));
         }
     </script>
 
