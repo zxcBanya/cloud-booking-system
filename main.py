@@ -162,5 +162,17 @@ def seed_data():
         
     return {"message": "Database already contains data."}
 
+# --- ERROR HANDLING ---
+
+@app.errorhandler(404)
+def page_not_found(e):
+    # Returns our custom 404 page instead of the default Flask error
+    return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    # Basic catch for backend crashes
+    return jsonify({"error": "Internal Server Error. Our maintenance team is on it!"}), 500
+
 if __name__ == '__main__':
     app.run(debug=True)

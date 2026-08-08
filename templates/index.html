@@ -18,10 +18,12 @@
         .room-title { font-size: 20px; font-weight: bold; margin-bottom: 10px; color: #2c3e50; }
         .room-price { color: #27ae60; font-size: 20px; margin-bottom: 15px; font-weight: bold; }
         
-        /* Calendar Styles */
         .date-container { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; text-align: left; background: #f9f9f9; padding: 10px; border-radius: 5px;}
         .date-container label { font-size: 13px; color: #555; font-weight: bold; }
         .date-input { padding: 8px; border: 1px solid #ccc; border-radius: 5px; width: 100%; box-sizing: border-box; }
+        
+        /* NEW: Style for the dynamic price calculator */
+        .price-display { margin-top: 8px; font-size: 14px; text-align: center; min-height: 20px; }
         
         .btn { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; transition: 0.3s; margin-top: auto;}
         .btn:hover { background: #2980b9; }
@@ -49,11 +51,9 @@
     <div class="room-container" id="rooms"></div>
 
     <script>
-        // ЛОГИКА КАЛЕНДАРЯ: Вычисляем дату "завтра"
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         
-        // Форматируем дату в YYYY-MM-DD для HTML атрибута min
         const year = tomorrow.getFullYear();
         const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
         const day = String(tomorrow.getDate()).padStart(2, '0');
@@ -78,13 +78,14 @@
                             actionHtml += `<button class="btn booked" disabled>Already Booked</button>`;
                         }
                     } else {
-                        // ПРИМЕНЯЕМ ОГРАНИЧИТЕЛЬ: min="${minDateStr}"
+                        // NEW LOGIC: Added onchange events to trigger the calculator and a div to show the result
                         actionHtml += `
                             <div class="date-container">
                                 <label>Check-in Date:</label>
-                                <input type="date" id="checkin_${room.id}" class="date-input" min="${minDateStr}">
+                                <input type="date" id="checkin_${room.id}" class="date-input" min="${minDateStr}" onchange="calculatePrice(${room.id}, ${room.price})">
                                 <label>Check-out Date:</label>
-                                <input type="date" id="checkout_${room.id}" class="date-input" min="${minDateStr}">
+                                <input type="date" id="checkout_${room.id}" class="date-input" min="${minDateStr}" onchange="calculatePrice(${room.id}, ${room.price})">
+                                <div id="price_display_${room.id}" class="price-display"></div>
                             </div>
                             <button class="btn" onclick="bookRoom(${room.id})">Reserve Room</button>
                         `;
@@ -103,6 +104,34 @@
                     container.appendChild(card);
                 });
             });
+
+        // NEW LOGIC: Function to calculate days and total price
+        function calculatePrice(id, pricePerNight) {
+            const checkIn = document.getElementById(`checkin_${id}`).value;
+            const checkOut = document.getElementById(`checkout_${id}`).value;
+            const display = document.getElementById(`price_display_${id}`);
+
+            if (checkIn && checkOut) {
+                const date1 = new Date(checkIn);
+                const date2 = new Date(checkOut);
+                
+                // Calculate difference in time (milliseconds)
+                const diffTime = date2 - date1;
+                // Convert milliseconds to days
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+
+                if (diffDays > 0) {
+                    const total = diffDays * pricePerNight;
+                    display.innerHTML = `Total: <strong>RM ${total}</strong> for ${diffDays} night(s)`;
+                    display.style.color = "#27ae60"; // Green color
+                } else {
+                    display.innerHTML = "Check-out must be after check-in.";
+                    display.style.color = "#e74c3c"; // Red color
+                }
+            } else {
+                display.innerHTML = ""; // Clear display if one date is missing
+            }
+        }
 
         function bookRoom(id) {
             {% if not current_user.is_authenticated %}
