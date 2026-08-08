@@ -18,12 +18,17 @@
         .room-image { width: 100%; height: 180px; object-fit: cover; border-radius: 5px; margin-bottom: 15px; background-color: #ecf0f1; display: flex; align-items: center; justify-content: center; color: #7f8c8d; font-weight: bold;}
         .room-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #2c3e50; }
         .room-price { color: #27ae60; font-size: 22px; margin-bottom: 15px; font-weight: bold; }
-        .btn { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; transition: 0.3s; margin-top: auto;}
+        .btn { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; transition: 0.3s; margin-top: 5px;}
         .btn:hover { background: #2980b9; }
         .booked { background: #95a5a6; cursor: not-allowed; }
         .booked:hover { background: #7f8c8d; }
         .btn-cancel { background: #e67e22; }
         .btn-cancel:hover { background: #d35400; }
+        .btn-edit { background: #f39c12; }
+        .btn-edit:hover { background: #e67e22; }
+        .btn-delete { background: #c0392b; }
+        .btn-delete:hover { background: #a5281b; }
+        .role-badge { font-size: 12px; background: #eee; padding: 3px 8px; border-radius: 10px; color: #555; margin-left: 10px; vertical-align: middle;}
     </style>
 </head>
 <body>
@@ -32,10 +37,15 @@
         <h2>🏠 Sunway Area Room Booking</h2>
         <div class="nav-links">
             {% if current_user.is_authenticated %}
-                <span style="margin-right: 15px; font-weight: bold;">Welcome, {{ current_user.username }}!</span>
-                <!-- NEW: Button to access the add room page -->
-                <a href="/add_room" class="btn-add">Add Room</a>
-                <a href="/logout" class="btn-logout">Logout</a>
+                <span style="font-weight: bold;">Welcome, {{ current_user.username }}!</span>
+                <span class="role-badge">{{ current_user.role|capitalize }}</span>
+                
+                <!-- SHOW 'ADD ROOM' ONLY TO LANDLORDS -->
+                {% if current_user.role == 'landlord' %}
+                    <a href="/add_room" class="btn-add">Add Room</a>
+                {% endif %}
+                
+                <a href="/logout" class="btn-logout" style="margin-left: 15px;">Logout</a>
             {% else %}
                 <a href="/login" class="btn-login">Login</a>
                 <a href="/register" class="btn-register">Register</a>
@@ -43,9 +53,7 @@
         </div>
     </div>
 
-    <div class="room-container" id="rooms">
-        <!-- Rooms will be loaded here from the database -->
-    </div>
+    <div class="room-container" id="rooms"></div>
 
     <script>
         fetch('/rooms')
@@ -56,30 +64,34 @@
                     const card = document.createElement('div');
                     card.className = 'room-card';
                     
-                    let buttonHtml = '';
+                    let actionHtml = '';
+                    
+                    // 1. Tenant/Booking Controls
                     if (room.is_booked) {
                         if (room.is_my_booking) {
-                            buttonHtml = `<button class="btn btn-cancel" onclick="cancelBooking(${room.id})">Cancel Booking</button>`;
+                            actionHtml += `<button class="btn btn-cancel" onclick="cancelBooking(${room.id})">Cancel Booking</button>`;
                         } else {
-                            buttonHtml = `<button class="btn booked" disabled>Already Booked</button>`;
+                            actionHtml += `<button class="btn booked" disabled>Already Booked</button>`;
                         }
                     } else {
-                        buttonHtml = `<button class="btn" onclick="bookRoom(${room.id})">Book Now</button>`;
+                        actionHtml += `<button class="btn" onclick="bookRoom(${room.id})">Book Now</button>`;
                     }
 
-                    // NEW LOGIC: Display image if it exists, otherwise show placeholder
-                    let imageHtml = '';
-                    if (room.image_url) {
-                        imageHtml = `<img src="/static/uploads/${room.image_url}" class="room-image" alt="${room.title}">`;
-                    } else {
-                        imageHtml = `<div class="room-image">No Image</div>`;
+                    // 2. Landlord/Owner Controls
+                    if (room.is_my_listing) {
+                        actionHtml += `<button class="btn btn-edit" onclick="window.location.href='/edit_room/${room.id}'">Edit Room</button>`;
+                        actionHtml += `<button class="btn btn-delete" onclick="deleteRoom(${room.id})">Delete Room</button>`;
                     }
+
+                    let imageHtml = room.image_url 
+                        ? `<img src="/static/uploads/${room.image_url}" class="room-image" alt="${room.title}">`
+                        : `<div class="room-image">No Image</div>`;
 
                     card.innerHTML = `
                         ${imageHtml}
                         <div class="room-title">${room.title}</div>
                         <div class="room-price">RM ${room.price} / month</div>
-                        ${buttonHtml}
+                        <div style="margin-top: auto;">${actionHtml}</div>
                     `;
                     container.appendChild(card);
                 });
@@ -91,36 +103,23 @@
                 window.location.href = "/login";
                 return;
             {% endif %}
-
             fetch(`/book/${id}`, { method: 'POST' })
-            .then(response => response.json())
-            .then(data => {
-                if(data.message) {
-                    alert(data.message); 
-                    location.reload();   
-                } else {
-                    alert(data.error);
-                }
-            })
-            .catch(error => console.error('Error:', error));
+            .then(res => res.json()).then(data => { alert(data.message || data.error); location.reload(); });
         }
 
         function cancelBooking(id) {
-            if(confirm("Are you sure you want to cancel this booking?")) {
+            if(confirm("Cancel this booking?")) {
                 fetch(`/unbook/${id}`, { method: 'POST' })
-                .then(response => response.json())
-                .then(data => {
-                    if(data.message) {
-                        alert(data.message); 
-                        location.reload();   
-                    } else {
-                        alert(data.error);
-                    }
-                })
-                .catch(error => console.error('Error:', error));
+                .then(res => res.json()).then(data => { alert(data.message || data.error); location.reload(); });
+            }
+        }
+
+        function deleteRoom(id) {
+            if(confirm("Are you sure you want to permanently delete this room?")) {
+                fetch(`/delete_room/${id}`, { method: 'POST' })
+                .then(res => res.json()).then(data => { alert(data.message || data.error); location.reload(); });
             }
         }
     </script>
-
 </body>
 </html>

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Room</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .form-container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 350px; }
+        h2 { text-align: center; color: #333; }
+        input, button { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        button { background: #f39c12; color: white; border: none; cursor: pointer; font-size: 16px; font-weight: bold; }
+        button:hover { background: #e67e22; }
+        .back-link { display: block; text-align: center; margin-top: 10px; text-decoration: none; color: #3498db; }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h2>✏️ Edit Room</h2>
+        <form action="/edit_room/{{ room.id }}" method="POST" enctype="multipart/form-data">
+            <label for="title">Room Title:</label>
+            <input type="text" name="title" id="title" value="{{ room.title }}" required pattern="^[a-zA-Z0-9\s.,-]+$" title="Only letters, numbers, spaces, dots, commas, and dashes allowed.">
+
+            <label for="price">Monthly Price (RM):</label>
+            <input type="number" step="0.01" name="price" id="price" value="{{ room.price }}" max="100000" required>
+
+            <label for="room_image">Update Photo (Leave blank to keep current):</label>
+            <input type="file" name="room_image" id="room_image" accept="image/*">
+
+            <button type="submit">Save Changes</button>
+        </form>
+        <a href="/" class="back-link">Back to Home</a>
+    </div>
+</body>
+</html>

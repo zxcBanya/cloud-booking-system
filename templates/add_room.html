@@ -16,13 +16,12 @@
 <body>
     <div class="form-container">
         <h2>🏠 Add New Room</h2>
-        <!-- enctype="multipart/form-data" is crucial for uploading files -->
         <form action="/add_room" method="POST" enctype="multipart/form-data">
-            <label for="title">Room Title (e.g., Master Bedroom):</label>
-            <input type="text" name="title" id="title" required>
+            <label for="title">Room Title (No special characters):</label>
+            <input type="text" name="title" id="title" required pattern="^[a-zA-Z0-9\s.,-]+$" title="Only letters, numbers, spaces, dots, commas, and dashes allowed.">
 
-            <label for="price">Monthly Price (RM):</label>
-            <input type="number" step="0.01" name="price" id="price" required>
+            <label for="price">Monthly Price (Max RM 100,000):</label>
+            <input type="number" step="0.01" name="price" id="price" max="100000" required>
 
             <label for="room_image">Upload Room Photo:</label>
             <input type="file" name="room_image" id="room_image" accept="image/*" required>

@@ -2,7 +2,7 @@ from flask import Flask, jsonify, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename # NEW: For safe file saving
+from werkzeug.utils import secure_filename
 import os
 import re
 
@@ -13,12 +13,10 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'booking.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# NEW: Configure image upload settings
 app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'static', 'uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 db = SQLAlchemy(app)
-
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -32,6 +30,7 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
+    role = db.Column(db.String(20), nullable=False, default='tenant') # 'tenant' or 'landlord'
 
 class Room(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -40,6 +39,7 @@ class Room(db.Model):
     is_booked = db.Column(db.Boolean, default=False)
     image_url = db.Column(db.String(200), nullable=True)
     booked_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True) # Who published the room
 
 with app.app_context():
     db.create_all()
@@ -66,7 +66,6 @@ def login():
             return redirect(url_for('home'))
         else:
             return render_template('login.html', error="Invalid username or password")
-            
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -75,10 +74,10 @@ def register():
         username = request.form.get('username')
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
+        role = request.form.get('role')
         
         if not re.match("^[a-zA-Z0-9_]+$", username):
             return render_template('register.html', error="Username can only contain English letters, numbers, and underscores.")
-
         if password != confirm_password:
             return render_template('register.html', error="Passwords do not match!")
         
@@ -87,10 +86,9 @@ def register():
             return render_template('register.html', error="Username already exists!")
             
         hashed_password = generate_password_hash(password)
-        new_user = User(username=username, password_hash=hashed_password)
+        new_user = User(username=username, password_hash=hashed_password, role=role)
         db.session.add(new_user)
         db.session.commit()
-        
         return redirect(url_for('login'))
         
     return render_template('register.html')
@@ -101,30 +99,66 @@ def logout():
     logout_user()
     return redirect(url_for('home'))
 
-# NEW ROUTE: Admin page to upload rooms
+# --- LANDLORD ROUTES ---
+
 @app.route('/add_room', methods=['GET', 'POST'])
 @login_required
 def add_room():
+    if current_user.role != 'landlord':
+        return "Access Denied: Only landlords can add rooms.", 403
+
     if request.method == 'POST':
         title = request.form.get('title')
         price = request.form.get('price')
         file = request.files.get('room_image')
 
-        # Check if file exists and is an image
+        # Validation: Title and Price
+        if not re.match(r"^[a-zA-Z0-9\s.,-]+$", title):
+            return "Invalid title format. Only English letters, numbers, spaces, and basic punctuation allowed.", 400
+        if float(price) > 100000:
+            return "Price cannot exceed RM 100,000 per month.", 400
+
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            # Save file to static/uploads folder
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             
-            # Save room data to database
-            new_room = Room(title=title, price=float(price), image_url=filename)
+            new_room = Room(title=title, price=float(price), image_url=filename, owner_id=current_user.id)
             db.session.add(new_room)
             db.session.commit()
-            
             return redirect(url_for('home'))
-        return "Invalid file type or no file uploaded.", 400
+        return "Invalid file type.", 400
         
     return render_template('add_room.html')
+
+@app.route('/edit_room/<int:room_id>', methods=['GET', 'POST'])
+@login_required
+def edit_room(room_id):
+    room = Room.query.get(room_id)
+    if not room or room.owner_id != current_user.id:
+        return "Access Denied: You can only edit your own rooms.", 403
+
+    if request.method == 'POST':
+        title = request.form.get('title')
+        price = request.form.get('price')
+
+        if not re.match(r"^[a-zA-Z0-9\s.,-]+$", title):
+            return "Invalid title format.", 400
+        if float(price) > 100000:
+            return "Price cannot exceed RM 100,000 per month.", 400
+
+        room.title = title
+        room.price = float(price)
+
+        file = request.files.get('room_image')
+        if file and file.filename != '' and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            room.image_url = filename
+
+        db.session.commit()
+        return redirect(url_for('home'))
+
+    return render_template('edit_room.html', room=room)
 
 # --- API ENDPOINTS ---
 
@@ -139,7 +173,8 @@ def get_rooms():
             "price": room.price,
             "is_booked": room.is_booked,
             "image_url": room.image_url,
-            "is_my_booking": True if current_user.is_authenticated and room.booked_by == current_user.id else False
+            "is_my_booking": True if current_user.is_authenticated and room.booked_by == current_user.id else False,
+            "is_my_listing": True if current_user.is_authenticated and room.owner_id == current_user.id else False
         })
     return jsonify(rooms_list)
 
@@ -158,29 +193,32 @@ def book_room(room_id):
 @login_required
 def unbook_room(room_id):
     room = Room.query.get(room_id)
-    if room and room.is_booked:
-        if room.booked_by == current_user.id:
-            room.is_booked = False
-            room.booked_by = None
-            db.session.commit()
-            return jsonify({"message": f"Success! Booking for {room.title} has been cancelled."}), 200
-        else:
-            return jsonify({"error": "Permission denied. You can only cancel your own bookings."}), 403
-    return jsonify({"error": "Room not found or not booked."}), 400
+    if room and room.is_booked and room.booked_by == current_user.id:
+        room.is_booked = False
+        room.booked_by = None
+        db.session.commit()
+        return jsonify({"message": f"Success! Booking for {room.title} has been cancelled."}), 200
+    return jsonify({"error": "Permission denied."}), 403
+
+@app.route('/delete_room/<int:room_id>', methods=['POST'])
+@login_required
+def delete_room(room_id):
+    room = Room.query.get(room_id)
+    if room and room.owner_id == current_user.id:
+        db.session.delete(room)
+        db.session.commit()
+        return jsonify({"message": "Room deleted successfully."}), 200
+    return jsonify({"error": "Permission denied."}), 403
 
 @app.route('/seed', methods=['GET'])
 def seed_data():
     if Room.query.count() == 0:
-        room1 = Room(title="Master Bedroom at Sunway Geo Residences", price=1200.0, is_booked=False)
-        room2 = Room(title="Cozy Single Room near Sunway University", price=850.0, is_booked=False)
-        room3 = Room(title="Studio Apartment walking distance to Sunway Pyramid", price=1800.0, is_booked=False)
-        
-        db.session.add(room1)
-        db.session.add(room2)
-        db.session.add(room3)
+        room1 = Room(title="Master Bedroom at Sunway Geo Residences", price=1200.0)
+        room2 = Room(title="Cozy Single Room near Sunway University", price=850.0)
+        room3 = Room(title="Studio Apartment walking distance to Sunway Pyramid", price=1800.0)
+        db.session.add_all([room1, room2, room3])
         db.session.commit()
-        return {"message": "Sunway test rooms added to the database!"}
-    
+        return {"message": "Sunway test rooms added!"}
     return {"message": "Database already contains data."}
 
 if __name__ == '__main__':
