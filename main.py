@@ -6,36 +6,33 @@ import os
 import re
 
 app = Flask(__name__)
-# Secret key is required by Flask to secure user sessions
 app.config['SECRET_KEY'] = 'sunway-secret-key-123' 
 
-# Database configuration
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'booking.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# Setup Login Manager
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 # --- DATABASE MODELS ---
 
-# 1. User Model
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
 
-# 2. Room Model
 class Room(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
     price = db.Column(db.Float, nullable=False)
     is_booked = db.Column(db.Boolean, default=False)
     image_url = db.Column(db.String(200), nullable=True)
+    # NEW: Link the room to the user who booked it
+    booked_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
 
 with app.app_context():
     db.create_all()
@@ -48,7 +45,6 @@ def load_user(user_id):
 
 @app.route('/')
 def home():
-    # Pass current_user to HTML to change UI based on login status
     return render_template('index.html', current_user=current_user)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -58,7 +54,6 @@ def login():
         password = request.form.get('password')
         user = User.query.filter_by(username=username).first()
         
-        # Check if user exists and password matches the hash
         if user and check_password_hash(user.password_hash, password):
             login_user(user)
             return redirect(url_for('home'))
@@ -72,22 +67,18 @@ def register():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        confirm_password = request.form.get('confirm_password') # Capture second password
+        confirm_password = request.form.get('confirm_password')
         
-        # 1. Validate username format (Only A-Z, a-z, 0-9, and underscores)
         if not re.match("^[a-zA-Z0-9_]+$", username):
             return render_template('register.html', error="Username can only contain English letters, numbers, and underscores.")
 
-        # 2. Check if passwords match
         if password != confirm_password:
             return render_template('register.html', error="Passwords do not match!")
         
-        # 3. Check if username is already taken
         user_exists = User.query.filter_by(username=username).first()
         if user_exists:
             return render_template('register.html', error="Username already exists!")
             
-        # 4. Hash the password and save user
         hashed_password = generate_password_hash(password)
         new_user = User(username=username, password_hash=hashed_password)
         db.session.add(new_user)
@@ -115,19 +106,38 @@ def get_rooms():
             "title": room.title,
             "price": room.price,
             "is_booked": room.is_booked,
-            "image_url": room.image_url
+            "image_url": room.image_url,
+            # NEW: Tell the frontend if the logged-in user owns this booking
+            "is_my_booking": True if current_user.is_authenticated and room.booked_by == current_user.id else False
         })
     return jsonify(rooms_list)
 
 @app.route('/book/<int:room_id>', methods=['POST'])
-@login_required # ONLY LOGGED IN USERS CAN ACCESS THIS
+@login_required 
 def book_room(room_id):
     room = Room.query.get(room_id)
     if room and not room.is_booked:
         room.is_booked = True
+        room.booked_by = current_user.id # Assign user ID to room
         db.session.commit()
         return jsonify({"message": f"Success! {room.title} is now booked."}), 200
     return jsonify({"error": "Room not found or already booked."}), 400
+
+# NEW ROUTE: Cancel a booking
+@app.route('/unbook/<int:room_id>', methods=['POST'])
+@login_required
+def unbook_room(room_id):
+    room = Room.query.get(room_id)
+    if room and room.is_booked:
+        # Verify that the person cancelling is the person who booked it
+        if room.booked_by == current_user.id:
+            room.is_booked = False
+            room.booked_by = None
+            db.session.commit()
+            return jsonify({"message": f"Success! Booking for {room.title} has been cancelled."}), 200
+        else:
+            return jsonify({"error": "Permission denied. You can only cancel your own bookings."}), 403
+    return jsonify({"error": "Room not found or not booked."}), 400
 
 @app.route('/seed', methods=['GET'])
 def seed_data():
