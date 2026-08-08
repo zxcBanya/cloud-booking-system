@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Register - Sunway Booking</title>
+    <title>Register - SunRest Hotel</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .form-container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; width: 300px; }
-        input, select { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;}
+        input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;}
         button { background: #27ae60; color: white; border: none; padding: 10px; width: 100%; border-radius: 5px; cursor: pointer; font-size: 16px;}
         button:hover { background: #219150; }
         .error { color: #e74c3c; margin-bottom: 10px; font-weight: bold; font-size: 14px; }
@@ -20,13 +20,6 @@
         {% endif %}
         <form method="POST">
             <input type="text" name="username" placeholder="Choose a Username" required pattern="[a-zA-Z0-9_]+" title="Only English letters, numbers, and underscores allowed">
-            
-            <select name="role" required>
-                <option value="" disabled selected>Select your role...</option>
-                <option value="tenant">I want to rent a room (Tenant)</option>
-                <option value="landlord">I want to list a room (Landlord)</option>
-            </select>
-
             <input type="password" name="password" placeholder="Create a Password" required>
             <input type="password" name="confirm_password" placeholder="Confirm Password" required>
             <button type="submit">Register</button>
