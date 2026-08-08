@@ -1,34 +1,31 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 import os
 
 app = Flask(__name__)
 
-# Database configuration (Local SQLite for now, will be replaced with Cloud DB later)
+# Database configuration
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'booking.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# Database schema for storing room information
 class Room(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(100), nullable=False)    # e.g., "Master Bedroom near Sunway Pyramid"
-    price = db.Column(db.Float, nullable=False)          # Monthly rental price (RM)
-    is_booked = db.Column(db.Boolean, default=False)     # Booking status
-    image_url = db.Column(db.String(200), nullable=True) # Will hold the Cloud Storage link later
+    title = db.Column(db.String(100), nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    is_booked = db.Column(db.Boolean, default=False)
+    image_url = db.Column(db.String(200), nullable=True)
 
-# Create the database file automatically
 with app.app_context():
     db.create_all()
 
-# 1. Base route to check if API is running
+# ИМЕННО ЭТОТ МАРШРУТ ТЕПЕРЬ ПОКАЗЫВАЕТ САЙТ
 @app.route('/')
 def home():
-    return {"message": "Sunway Booking API is running successfully!"}
+    return render_template('index.html')
 
-# 2. API Endpoint to view all available rooms
 @app.route('/rooms', methods=['GET'])
 def get_rooms():
     rooms = Room.query.all()
@@ -43,7 +40,6 @@ def get_rooms():
         })
     return jsonify(rooms_list)
 
-# 3. API Endpoint to quickly add test data (Sunway area)
 @app.route('/seed', methods=['GET'])
 def seed_data():
     if Room.query.count() == 0:

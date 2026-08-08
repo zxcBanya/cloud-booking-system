@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sunway Room Booking</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; }
+        h1 { text-align: center; color: #333; }
+        .room-container { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-top: 30px; }
+        .room-card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 300px; text-align: center; }
+        .room-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #2c3e50; }
+        .room-price { color: #27ae60; font-size: 22px; margin-bottom: 15px; font-weight: bold; }
+        .btn { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; transition: 0.3s; }
+        .btn:hover { background: #2980b9; }
+        .booked { background: #e74c3c; cursor: not-allowed; }
+        .booked:hover { background: #c0392b; }
+    </style>
+</head>
+<body>
+
+    <h1>🏠 Sunway Area Room Booking</h1>
+    <div class="room-container" id="rooms">
+        <!-- Комнаты будут загружаться сюда из базы данных -->
+    </div>
+
+    <script>
+        // Запрашиваем данные из нашего Python API
+        fetch('/rooms')
+            .then(response => response.json())
+            .then(rooms => {
+                const container = document.getElementById('rooms');
+                rooms.forEach(room => {
+                    const card = document.createElement('div');
+                    card.className = 'room-card';
+                    
+                    let buttonHtml = `<button class="btn" onclick="bookRoom(${room.id})">Book Now</button>`;
+                    if (room.is_booked) {
+                        buttonHtml = `<button class="btn booked" disabled>Already Booked</button>`;
+                    }
+
+                    card.innerHTML = `
+                        <div class="room-title">${room.title}</div>
+                        <div class="room-price">RM ${room.price} / month</div>
+                        ${buttonHtml}
+                    `;
+                    container.appendChild(card);
+                });
+            });
+
+        // Функция бронирования (логику добавим на следующем шаге)
+        function bookRoom(id) {
+            alert("This button works! We will add the database update logic next. Room ID: " + id);
+        }
+    </script>
+
+</body>
+</html>
