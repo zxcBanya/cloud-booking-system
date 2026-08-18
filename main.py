@@ -9,7 +9,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'sunrest-hotel-secret' 
 
 basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'booking.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://admin:Hotel_#1@sunrest-hotel-db.conuqgphn1ch.us-east-1.rds.amazonaws.com/sunrest_hotel_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
