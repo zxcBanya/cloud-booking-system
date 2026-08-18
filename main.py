@@ -175,4 +175,4 @@ def internal_server_error(e):
     return jsonify({"error": "Internal Server Error. Our maintenance team is on it!"}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=80)
