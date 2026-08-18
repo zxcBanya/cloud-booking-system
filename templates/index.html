@@ -92,7 +92,7 @@
                     }
 
                     let imageHtml = room.image_url 
-                        ? `<img src="/static/uploads/${room.image_url}" class="room-image" alt="${room.title}" onerror="this.src=''; this.alt='Image not found';">`
+                        ? `<img src="${room.image_url}" class="room-image" alt="${room.title}" onerror="this.src=''; this.alt='Image not found';">`
                         : `<div class="room-image">No Image</div>`;
 
                     card.innerHTML = `

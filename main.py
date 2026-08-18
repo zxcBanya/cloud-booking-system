@@ -150,15 +150,16 @@ def unbook_room(room_id):
 @app.route('/seed', methods=['GET'])
 def seed_data():
     if Room.query.count() == 0:
-        # NEW: Hotel rooms with predefined images from your static/uploads folder
-        room1 = Room(title="Standard Single Room", price=150.0, image_url="single.jpg")
-        room2 = Room(title="Classic Double Room", price=250.0, image_url="double.jpg")
-        room3 = Room(title="Deluxe King Bedroom", price=400.0, image_url="king.jpg")
-        room4 = Room(title="Presidential Suite", price=900.0, image_url="suite.jpg")
+        s3_base_url = "https://sunrest-hotel-media.s3.amazonaws.com/"
+        
+        room1 = Room(title="Standard Single Room", price=150.0, image_url=f"{s3_base_url}single.jpg")
+        room2 = Room(title="Classic Double Room", price=250.0, image_url=f"{s3_base_url}double.jpg")
+        room3 = Room(title="Deluxe King Bedroom", price=400.0, image_url=f"{s3_base_url}king.jpg")
+        room4 = Room(title="Presidential Suite", price=900.0, image_url=f"{s3_base_url}suite.jpg")
         
         db.session.add_all([room1, room2, room3, room4])
         db.session.commit()
-        return {"message": "SunRest Hotel rooms generated successfully!"}
+        return {"message": "SunRest Hotel rooms generated successfully with S3 media!"}
         
     return {"message": "Database already contains data."}
 
